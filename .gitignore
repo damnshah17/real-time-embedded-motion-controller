@@ -1,0 +1,11 @@
+/build*/
+*.elf
+*.bin
+*.map
+*.exe
+*.obj
+*.o
+*.pdb
+CMakeCache.txt
+CMakeFiles/
+Testing/

@@ -1,0 +1,13 @@
+foreach(run RANGE 1 2)
+    execute_process(COMMAND "${RUNNER}" --quiet --scenario sequence
+        RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 25)
+    if(NOT result EQUAL 0)
+        message(FATAL_ERROR "Closed-loop replay ${run} failed: ${output} ${error}")
+    endif()
+    if(run EQUAL 1)
+        set(first "${output}")
+    elseif(NOT first STREQUAL output)
+        message(FATAL_ERROR "Repeated closed-loop metrics/output hashes differ:\n${first}\n${output}")
+    endif()
+endforeach()
+message(STATUS "Identical closed-loop metrics, completion times and sampled output/state hashes across two processes")
