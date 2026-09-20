@@ -500,12 +500,14 @@ int main(int argc, char **argv)
         printf("{\"kind\":\"compiled_configuration\",\"motion_hz\":%u,\"safety_hz\":%u,\"telemetry_hz\":%u,"
                "\"command_queue_depth\":%u,\"plant_hz\":%u,\"kp\":%.6g,\"ki\":%.6g,\"kd\":%.6g,"
                "\"pwm_min\":%.6g,\"pwm_max\":%.6g,\"tolerance_counts\":%.6g,\"completion_velocity_counts_s\":%.6g,"
-               "\"dwell_cycles\":%u,\"no_motion_timeout_ms\":%u,\"heartbeat_fresh_ms\":%u,"
+               "\"dwell_cycles\":%u,\"no_motion_pwm_threshold\":%.6g,\"no_motion_velocity_counts_s\":%.6g,"
+               "\"no_motion_timeout_ms\":%u,\"heartbeat_fresh_ms\":%u,"
                "\"watchdog_timeout_ms\":%" PRIu32 ",\"homing_pwm\":%.6g,\"homing_timeout_ms\":%u}\n",
                1000U / MOTION_PERIOD_MS, 1000U / SAFETY_PERIOD_MS, 1000U / TELEMETRY_PERIOD_MS,
                COMMAND_QUEUE_CAPACITY, 1000U / p.step_ms, (double)m.pid.kp, (double)m.pid.ki, (double)m.pid.kd,
                (double)m.pid.output_min, (double)m.pid.output_max, (double)m.tolerance,
-               (double)m.completion_velocity, m.dwell_cycles, SAFETY_STALL_TIMEOUT_MS, HEALTH_MAXIMUM_AGE_MS,
+               (double)m.completion_velocity, m.dwell_cycles, (double)SAFETY_STALL_PWM,
+               (double)SAFETY_STALL_VELOCITY, SAFETY_STALL_TIMEOUT_MS, HEALTH_MAXIMUM_AGE_MS,
                w.timeout_ms, (double)HOMING_PWM, HOMING_TIMEOUT_MS);
         return fflush(stdout) == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
     }

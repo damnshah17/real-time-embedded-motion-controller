@@ -63,7 +63,7 @@ bool runtime_step_safety(void);
 void runtime_set_heartbeat_filter(bool (*filter)(task_health_id_t));
 void runtime_input_ready(void); /* Task-context notification. */
 void runtime_snapshot(runtime_snapshot_t *snapshot);
-/* Tick ISR callback only. The input adapter supplies the data separately. */
+/* ISR callback after runtime_init. Adapter supplies data and requests an ISR yield. */
 void runtime_input_ready_from_isr(void);
 /* Host harness shutdown: tasks park voluntarily outside work/stdio sections. */
 void runtime_request_stop(void);

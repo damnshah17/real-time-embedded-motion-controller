@@ -61,7 +61,7 @@ an out-of-band emergency channel.
 | `MOTION command=... value=... ERR OUT_OF_RANGE` | Integer parsed, but resulting target outside configured travel |
 | `... ERR INVALID_STATE` | Busy, startup, unsafe state or invalid RESET conditions |
 | `... ERR NOT_IMPLEMENTED` | Recognized deferred command, currently SPEED |
-| `... ERR INPUT` | Controller feedback/input failure (normally retained INTERNAL through RTOS integration) |
+| `... ERR CONTROL_INPUT` | Controller feedback/input failure (normally retained INTERNAL through RTOS integration) |
 
 The existing enums/names are preserved. No new SAFETY_LOCKED synonym was added.
 Diagnostic-integrity errors remain INTERNAL/DIAGNOSTIC_KIND; they are not command

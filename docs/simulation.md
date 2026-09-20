@@ -1,7 +1,7 @@
 # Deterministic motor and encoder simulation
 
 The host motor model is a deliberately simplified deterministic plant used to
-exercise firmware architecture and future control logic. It does not model motor
+exercise the implemented firmware architecture, control and safety logic. It does not model motor
 electrical dynamics, gearbox effects, compliance, backlash, load variation, sensor
 noise, or other physical-machine behavior with hardware fidelity.
 
@@ -208,3 +208,20 @@ and the already-active sensor policy. No homing function writes physical plant s
 The open-loop and closed-loop executables are alternative owners of the singleton
 host peripherals. Manual injection remains useful for targeted unit/regression tests;
 do not mix manual raw-count/limit writers with a connected moving plant.
+
+## Phase 8 metrics and demo catalog
+
+`scripts/metrics.ps1` runs existing positive/negative control, E-stop, stall,
+watchdog and three HOME starting-position scenarios. It parses their measured
+records and exports human-readable output plus JSON. The runner's host-only
+`--configuration-json` mode reads compiled defaults and initialized watchdog
+configuration without starting the scheduler. CTest and demo metadata supply counts.
+Warning counts are unmeasured by incremental metrics builds, explicitly recorded
+as null; final clean build logs supply separate compiler evidence.
+
+`scripts/demos.ps1` derives its catalog from `demo.ps1`, runs all 18 public scenarios
+and saves their output. README recommends closed-loop, homing and estop as a short
+presentation sequence in independent processes. Existing PHASE1/3/4/7 success
+markers are retained for their runners; they identify a compatibility format,
+not the current project version. No interactive SIM parser was added: host injection
+is scenario code and [firmware commands](protocol.md) reject SIM syntax.

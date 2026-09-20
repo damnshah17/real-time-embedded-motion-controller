@@ -1,4 +1,9 @@
-# Architecture through Phase 7
+# Architecture through Phase 9
+
+The host design below remains functionally validated. Phase 9 adds a separate
+STM32F407VG build of the same portable sources, with target startup, FreeRTOS
+configuration and register drivers. [Embedded build](embedded-build.md) describes
+memory/interrupt ownership. Target execution is not yet proven.
 
 The existing Phase 1 application/HAL separation is retained. The new RTOS adapter
 owns execution; application startup logic has not been rewritten.
@@ -10,7 +15,7 @@ owns execution; application startup logic has not been rewritten.
 | `motion_app` | Portable startup state machine; depends on platform operations, not FreeRTOS or host headers |
 | `motion_control` | Pure PID, encoder-feedback motion and one-stage homing; no FreeRTOS or simulator dependency |
 | `firmware_support` | Pure command parser, heartbeat, fault and safety policy logic, no OS dependency |
-| `freertos_kernel` | Unmodified V11.2.0 kernel subset, official host port and configured tick hook |
+| `freertos_kernel` | Unmodified V11.2.0 kernel subset; host port/tick hook or GCC/ARM_CM4F with separate target configuration |
 | `motion_rtos` | Four tasks, command bus, bounded diagnostics, health/snapshot synchronization and periodic scheduling |
 | `platform_host` | Six peripheral models, startup initialization, injectable timer/log/UART services and host access hooks; no FreeRTOS dependency |
 | `platform_host_rtos` | Preserved static RX queue/script adapter, UART binding and bounded telemetry formatting |
@@ -19,6 +24,7 @@ owns execution; application startup logic has not been rewritten.
 | `plant_model` | Host-only fixed-step motor dynamics and encoder/limit publication; depends on plain `platform_host`, not FreeRTOS |
 | `motion_controller_plant` | Single-threaded open-loop/limit scenarios, logical-time advancement and low-rate plant snapshots |
 | `motion_controller_closed_loop` | Coordinates the real Motion task and fixed plant steps with notification handshakes; UART commands, metrics and recorded playback |
+| `motion_controller_stm32` | Separate ARM configuration: same portable sources, STM32 startup/drivers, Cortex-M4F FreeRTOS port; no simulator |
 
 There are no host-control includes in `firmware/app`, `firmware/tasks`, protocol or
 health logic. Platform definitions are resolved at link time. The host runner
@@ -27,7 +33,8 @@ original runner retains its manually advanced logical clock. Firmware task code
 uses `drivers/uart.h`, `drivers/gpio.h`, `drivers/encoder.h`, `drivers/motor.h`
 and `drivers/telemetry.h`, not host script controls. The existing `platform_time_ms`
 and `platform_motor_disable` functions delegate to the timer and motor drivers.
-`drivers/input.h` remains a compatibility facade over the UART frame contract.
+`drivers/input.h` retains the host adapter's frame type alias. The unused
+receive/pending wrappers were removed; Communications uses UART directly.
 
 ## Controller-state ownership
 
@@ -108,10 +115,9 @@ Phase 4 connects those same driver implementations to a deterministic plant in a
 separate host scenario runner. Phase 5 adds portable PID/motion control and a runner
 connecting the real Motion task to that plant. Phase 6 adds the independent safety
 policy, motor inhibit gate and deterministic fault scenarios; see [safety](safety.md).
-An eventual Cortex-M target
-must select a real embedded FreeRTOS port and actual embedded platform sources,
-with no host simulator linkage. Neither that build nor hardware/virtual-MCU
-validation is claimed here.
+Phase 9 adds a genuine STM32F407VG Cortex-M4F target with the GCC/ARM_CM4F port
+and target platform sources. Host/simulator linkage is rejected by its audit.
+Hardware/virtual-MCU execution remains unvalidated.
 
 ## Peripheral boundary and initialization
 
@@ -119,9 +125,9 @@ validation is claimed here.
 flowchart TD
     FW[Firmware / RTOS] --> API[Driver interfaces]
     API --> Host[Host platform: implemented]
-    API -. future implementation .-> STM[STM32 platform: not built]
+    API --> STM[STM32F407 platform: cross-compiled]
     Host --> HP[UART frames/TX, GPIO state, PWM duty, encoder count, ms clock, watchdog state]
-    STM --> SP[USART IRQ/DMA, GPIO/EXTI, TIM PWM/encoder/clock, IWDG]
+    STM --> SP[USART2 IRQ, GPIO, TIM3 PWM, TIM2 encoder, SysTick, IWDG]
     Harness[Simulator and tests] --> Inject[Host-only injection APIs]
     Inject --> Host
 ```
@@ -190,7 +196,7 @@ Host stall/frozen-encoder controls now act at the dynamics/publication boundary
 without exposing simulator data to firmware. The heartbeat observation filter is
 configured before scheduling; only the host scenario changes its private drop mask.
 
-An eventual STM32 build replaces host motor/encoder/GPIO implementations with real
+The STM32 build replaces host motor/encoder/GPIO implementations with real
 peripherals and omits `plant_model`, `motion_controller_plant` and the host
 `motion_controller_closed_loop` runner entirely.
 
@@ -225,3 +231,13 @@ scheduling APIs; it exposes no simulator data to firmware. The host never calls
 PID. Command admission, acceptance and completion remain distinct. Host metrics
 and sampled control traces are printed after tasks park. See [control design](control.md)
 for state policies, timing, quantization and finite-horizon metric definitions.
+
+## Phase 8 consolidation
+
+STATUS and TEL share one five-group [schema](protocol.md). Telemetry samples STATUS
+at service time, copies runtime state under the existing critical section, and
+formats outside it. No task, snapshot queue or control-path printing was added.
+The source/target split was retained; see [porting inventory](stm32-port.md).
+Startup and manual-input runners remain active regression coverage. Only the two
+unused input receive/pending wrappers were removed. Strengthened HAL checks have
+negative fixtures, including Windows header/API leakage and a FreeRTOS-name control.

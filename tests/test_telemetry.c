@@ -43,8 +43,16 @@ int main(void)
         CHECK(strstr(output, "watchdog_supervision=HEALTHY") != NULL);
         CHECK(strstr(output, "home result=COMPLETE referenced=1") != NULL);
         CHECK(strstr(output, "queue_capacity=8") != NULL);
+        clear();
+        diagnostic_t status = {.kind = DIAG_RECEIVED, .command = {CMD_STATUS, 0}};
+        platform_diagnostic_emit(&status);
+        CHECK(strstr(output, "ACK STATUS snapshot_ms=") != NULL);
+        CHECK(strstr(output, "STATUS t_ms=") != NULL);
+        CHECK(strstr(output, application_state_name(states[i])) != NULL);
+        CHECK(strstr(output, "target_counts=2000 position_counts=1234") != NULL);
+        CHECK(strstr(output, "requested_pwm=0.8 applied_pwm=0") != NULL);
     }
-    clear();
+    clear(); calls = 0U; fixture.timestamp_ms = 1000U;
     diagnostic_t d = {.kind = DIAG_RECEIVED, .command = {CMD_STATUS, 0}};
     platform_diagnostic_emit(&d);
     CHECK(calls == 1U && strstr(output, "ACK STATUS snapshot_ms=1000") != NULL);

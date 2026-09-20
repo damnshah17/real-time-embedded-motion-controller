@@ -175,3 +175,8 @@ These are host-simulation results, not certified machine safety, STO, safety rel
 behavior or IEC 61508 / ISO 13849 compliance. No physical STM32/motor/encoder, ARM
 binary or Renode validation was used. Target implementation and advanced homing
 remain outside Phase 7. See [validation report](phase-7.md).
+
+Phase 8 keeps this behavior unchanged. STATUS/TEL now report the home result,
+reference flag, elapsed milliseconds, completion count and contact allowance using
+the common [protocol schema](protocol.md). `scripts/metrics.ps1` reruns the 500,
+1500 and 4000 count starting scenarios and obtains PWM/timeout from compiled defaults.

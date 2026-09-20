@@ -1,4 +1,11 @@
-# Real-time execution design — Phase 7
+# Real-time execution design — Phase 9
+
+Host timing evidence remains simulation-only. The STM32F407 build preserves
+these task periods at a 16 MHz HSI clock and 100 Hz SysTick, with M4F context
+switching. UART TX polling runs in preemptible Telemetry; RX framing runs at
+NVIC priority 6 and notifies Comms. Cortex-M timing, task stack watermarks, UART
+throughput under load and watchdog reset remain unmeasured. Target stack
+reservations and IRQ settings are in [embedded-build.md](embedded-build.md).
 
 ## Priorities and execution bounds
 
@@ -65,13 +72,17 @@ signal-based tick machinery; Linux execution is not locally validated.
 The tick implementation checks the pending-yield flag after the callback returns.
 These FromISR calls pass NULL for the woken-task pointer and rely on that enclosing
 tick's context-switch decision. Calling the Windows `portYIELD_FROM_ISR` macro in
-this void hook would be wrong because it returns a value. A future separate
-Cortex-M ISR should use the woken flag and that port's normal yield-at-exit pattern.
+this void hook would be wrong because it returns a value. The separate STM32 UART
+ISR pends a Cortex-M context switch after delivering a frame/notification. It
+unconditionally requests the switch because the shared notification helper does
+not expose the woken-task flag; this may cause an unnecessary scheduling decision.
 
 Real Cortex-M ISR validation must also configure priority grouping and the
 `configMAX_SYSCALL_INTERRUPT_PRIORITY` boundary: interrupts above the allowed
-RTOS-call threshold cannot use kernel APIs. That mapping has not been implemented
-or tested. No ISR parses strings, computes PID, formats telemetry or blocks.
+RTOS-call threshold cannot use kernel APIs. Phase 9 compiles grouping 3 (four
+preemption bits), kernel priority 15, syscall threshold 5, USART2 priority 6.
+Execution and latency remain untested. No ISR parses commands, computes PID,
+formats telemetry or blocks; the UART ISR only frames bytes into a bounded queue.
 
 ## Shared state and health
 
@@ -114,9 +125,9 @@ TX statistics count successful calls/bytes and rejected or failed calls. A physi
 sink can fail after a partial write; success is not reported in that case and the
 driver does not retry or roll back bytes. The Communications task now reads through
 `uart_try_read_line`, backed by the same Phase 2 RX queue and readiness notification.
-The tick-hook release of complete frames remains host scaffolding. A future STM32
-USART IRQ/DMA buffer or dedicated control timer interrupt must supply a realistic
-embedded path; no UART baud/framing timing is simulated now.
+The tick-hook release of complete frames remains host scaffolding. Phase 9 supplies
+a USART2 RX ISR, static frame queue and task notification for STM32. No physical
+UART baud/framing timing has been validated.
 
 Queue admission and command execution are separate results. A syntactically valid
 MOVE receives `ACK QUEUED` on admission, then Motion's `ACK ACCEPTED` or a state/range
@@ -156,10 +167,12 @@ time handles one wrap; a full counter cycle or more cannot be distinguished.
 
 The motor driver clamps finite out-of-range duty; NaN/Inf forces zero and returns
 an error. Disable is not a latched emergency-stop interlock: a subsequent valid
-driver command can set output again. Motion now commands bounded PID output while
+driver command can set output again only if the independent safety gate permits it.
+Motion now commands bounded PID output while
 MOVING and zero output in IDLE/STOPPING. Encoder arithmetic uses unsigned wrap and explicit
 signed conversion; it is not a physical quadrature decoder. GPIO inputs are logical
-active values without electrical polarity, debounce, interrupt or safety behavior.
+active values without electrical polarity, debounce or interrupt modeling. Safety
+applies the implemented E-stop/limit policy to those inputs.
 
 Primary sources: [official V11.2.0 Windows port](https://github.com/FreeRTOS/FreeRTOS-Kernel/blob/V11.2.0/portable/MSVC-MingW/port.c),
 [port definitions](https://github.com/FreeRTOS/FreeRTOS-Kernel/blob/V11.2.0/portable/MSVC-MingW/portmacro.h),
@@ -227,8 +240,8 @@ and is not safety critical. The original RTOS tests still check normal task
 periods, health, queues and simulated interrupts. Motion disables PWM before parking;
 all tasks park before final output and hooks are detached after scheduler return.
 
-Firmware telemetry gains target, encoder velocity, error, PID/PWM and dwell fields
-in an additional bounded UART line. Closed-loop demo traces are collected at 500 ms
+Firmware telemetry uses the five-group [protocol schema](protocol.md), including
+target, encoder velocity, error and requested/applied PWM. Demo traces are collected at 500 ms
 logical intervals and printed after shutdown; normal firmware console output remains
 Telemetry-owned. Metrics use every control sample, including two post-completion
 seconds, not the sparse playback. See [control design](control.md) for equations,
@@ -249,3 +262,10 @@ negative-direction guard share its nested driver critical sections. No mutex,
 allocation, blocking logging or plant computation was added to these sections.
 GPIO release revokes the departure allowance; the same task snapshots expose that
 change. Normal Motion/Safety/Comms/Telemetry priorities and periods are unchanged.
+
+Phase 8 STATUS captures a coherent runtime snapshot at Telemetry service time,
+then formats five bounded lines outside synchronization. This does not promise
+command-time state or new simultaneous device reads. The unchanged diagnostic
+drain bound also limits STATUS/HELP service; overload can still drop records.
+Compiled-configuration and scenario-metrics output is host-only and runs outside
+the control loop. No task period, allocation or high-priority I/O was added.

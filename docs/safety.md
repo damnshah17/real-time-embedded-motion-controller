@@ -178,9 +178,10 @@ the firmware parser. E-stop is injected through the GPIO host API, limits throug
 plant endpoint placement, and mechanical/frozen-feedback conditions through the
 single-owner plant flags.
 
-Telemetry exposes the current state, retained fault/time/source/active condition,
-E-stop/limits, candidate duration, encoder-recovery requirement, unhealthy mask,
-watchdog refresh count, requested/applied duty and aborted moves. Event records are
+STATUS and telemetry expose current state, retained fault/time, E-stop/limits,
+heartbeat freshness, watchdog supervision/refresh count, requested/applied duty
+and aborted moves through the [protocol schema](protocol.md). Detailed candidate,
+recovery and fault-source data remain in runtime/test snapshots. Event records are
 bounded; Safety forces the gate before attempting logs. Demo playback shows safety
 state changes and requested duty captured at the trip. Quiet replay compares the
 scenario results, recovery move metrics and measured timing across processes.

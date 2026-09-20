@@ -1,10 +1,11 @@
-# Encoder-feedback position control — Phase 7
+# Encoder-feedback position control — Phase 8
 
 The real FreeRTOS Motion task now owns a portable position controller. It reads
 only encoder counts, estimates velocity, handles typed MOVE/MOVE_REL/STOP commands,
 runs PID and writes PWM through the existing motor interface. No plant position or
 true velocity is used for firmware feedback. This is host-validated closed-loop
-position control, not hardware-tuned or safety-complete control.
+position control with a separate [safety supervisor](safety.md). It is not
+hardware-tuned or certified machine safety.
 
 ## PID primitive
 
@@ -136,7 +137,8 @@ the zero-distance scenario completes 190 ms after its acceptance sample. IDLE do
 not actively hold position. Coasting may change a count after completion.
 
 Firmware telemetry exposes target, encoder position, estimated velocity, error,
-bounded PID output, final PWM, dwell count and completed moves. Simulator-only
+requested/applied PWM and completed moves using the [protocol schema](protocol.md).
+PID internals and dwell remain in control-test snapshots. Simulator-only
 mechanical values never enter firmware telemetry or control.
 
 ## Deterministic FreeRTOS integration

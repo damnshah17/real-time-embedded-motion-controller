@@ -9,7 +9,7 @@ void motor_safety_inhibit(bool inhibit);
 void motor_safety_block_negative(bool block);
 bool motor_is_inhibited(void);
 float motor_get_requested_output(void);
-/* Startup-only, infallible reset of the host peripheral model; output becomes zero. */
+/* Startup-only initialization; output becomes zero. Target may also assert inhibit. */
 void motor_init(void);
 /* Task context. Finite values saturate to [-1,1]; NaN/Inf disable and return INVALID. */
 motor_result_t motor_set_output(float duty_cycle);

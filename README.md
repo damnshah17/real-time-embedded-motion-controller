@@ -5,17 +5,22 @@ firmware architecture: prioritized Motion, Safety, Communications and Telemetry
 tasks, encoder-feedback PID position control, PWM, E-stop, limits, no-motion
 protection, watchdog supervision, validated reset and one-stage homing.
 
-**Validated entirely on a Windows host with a deterministic simulated motor.**
-No physical STM32, motor or encoder, ARM Cortex-M binary or Renode execution has
-been used. Configured task rates and simulation results are not hardware timing
-measurements or certified machine safety.
+**Functionally validated on a Windows host with a deterministic simulated motor;
+also cross-compiled as genuine STM32F407VG Cortex-M4F firmware.** The ARM image
+uses the official FreeRTOS Cortex-M4F port and STM32 peripheral implementations,
+excluding the host simulator. No physical STM32, motor/encoder or Renode execution
+has been used. Configured rates are not measured hardware timing or certified safety.
 
-**Phase 8: host consolidation.** Motion runs at 100 Hz, Safety at 50 Hz and
+**Phase 9: ARM firmware target.** Motion runs at 100 Hz, Safety at 50 Hz and
 Telemetry at 10 Hz; the numerical plant advances at 1000 steps per simulated
 second. Representative positive/negative moves finish within 1 encoder count,
 with 1-count overshoot. HOME from 1500 counts takes 10.25 simulated seconds.
-[Validation and readiness report](docs/phase-8.md) distinguishes measured results
-from configuration and future target work.
+[Phase 9 validation report](docs/phase-9.md) distinguishes host measurements,
+verified ARM build properties, and future execution work.
+
+Final Debug and Release validation each passed **103/103 tests**, including
+protocol, HAL isolation and control/safety/homing replay. Compiler warnings: **0**.
+All **18 demos** passed; two final metrics runs produced byte-identical JSON.
 
 ```mermaid
 flowchart LR
@@ -38,7 +43,7 @@ Required: Windows multicore host, PowerShell, CMake 3.20+, Ninja and x64 MinGW G
 Validated tools: MSYS2 UCRT64 GCC 16.1.0, CMake 4.4.0, Ninja 1.13.2. Put
 `C:\msys64\ucrt64\bin` on PATH. Git is needed to clone a repository, not to build
 an extracted source tree. FreeRTOS V11.2.0 is vendored with license and SHA256
-verification; no build-time download or ARM toolchain is required.
+verification; host builds need no build-time download or ARM toolchain.
 
 From the repository root (paths containing spaces are supported):
 
@@ -51,6 +56,19 @@ From the repository root (paths containing spaces are supported):
 ```
 
 Scripts create build directories and throw on configure/build/test/demo failure.
+For the independent STM32 target, put Arm GNU Toolchain **15.2.Rel1** on PATH:
+
+```powershell
+./scripts/build-arm.ps1
+./scripts/build-arm.ps1 -Configuration Debug
+```
+
+ELF, BIN, MAP and structural audit reports are generated under `build/arm-Release`
+or `build/arm-Debug`. See [embedded build instructions](docs/embedded-build.md)
+for pins, memory, flags, startup, IRQ rules and execution limitations.
+
+Run host validation serially; concurrent native simulators/build load can disrupt
+the Windows port's timing-sensitive scheduling checks.
 For a fresh independent build without deleting existing artifacts:
 
 ```powershell
@@ -154,12 +172,14 @@ Tests cover startup, actual FreeRTOS scheduling/queues/notifications, protocol,
 peripherals, plant, PID/motion, safety, homing, output formatting and HAL isolation.
 Control, safety and homing replay compare fresh processes from the same build.
 Project and compiled upstream sources use `-Wall -Wextra -Wpedantic -Werror`.
-See the [Phase 8 evidence and feature traceability](docs/phase-8.md).
+See the [Phase 9 build/regression evidence](docs/phase-9.md) and
+[historical Phase 8 feature traceability](docs/phase-8.md).
 
 Windows GitHub Actions is configured for UCRT64 Debug/Release builds and the full
 CTest suite, including isolation/replays. Remote CI has not been run. The optional
 Linux POSIX CMake path remains unvalidated and is excluded from the claimed CI
-baseline. No new packages or vendored-source modifications were needed for Phase 8.
+baseline. ARM CI is deferred pending a pinned toolchain installation job; local
+ARM clean builds and structural checks are recorded in the Phase 9 report.
 
 The motor model omits electrical behavior, load variation, noise and backlash.
 Zero PWM removes drive and allows coasting; it does not prove mechanical rest.
@@ -169,15 +189,16 @@ safety remain unvalidated. Static RTOS objects do not imply a heap-free desktop
 process or known Cortex-M stack requirements.
 
 Portable application/control/protocol/safety and RTOS code depend on driver
-interfaces. Host platform, plant and runners are separate CMake targets. A future
-ARM target must select an embedded FreeRTOS port and actual platform sources;
-[current source boundaries and porting obligations](docs/stm32-port.md) are
-planning evidence, not compiled STM32 firmware.
+interfaces. Host platform, plant and runners are separate CMake targets. The ARM
+configuration links the same portable sources against STM32 implementations and
+the GCC/ARM_CM4F port. [Target mappings and remaining obligations](docs/stm32-port.md)
+describe compiled foundations; peripheral execution remains unvalidated.
 
 Read [architecture](docs/architecture.md), [real-time design](docs/real-time-design.md),
 [protocol](docs/protocol.md), [control](docs/control.md), [safety](docs/safety.md),
 [homing](docs/homing.md), [simulation](docs/simulation.md) and
 [dependency provenance](third_party/README.md).
 Historical reports: [1](docs/phase-1.md), [2](docs/phase-2.md), [3](docs/phase-3.md),
-[4](docs/phase-4.md), [5](docs/phase-5.md), [6](docs/phase-6.md), [7](docs/phase-7.md).
+[4](docs/phase-4.md), [5](docs/phase-5.md), [6](docs/phase-6.md), [7](docs/phase-7.md),
+[8](docs/phase-8.md).
 They record behavior at those phases, not the current feature set.

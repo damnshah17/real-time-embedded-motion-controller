@@ -1,3 +1,5 @@
 * text=auto
 # Preserve upstream bytes so the vendored-source SHA256 manifest is portable.
 third_party/FreeRTOS-Kernel/** -text
+third_party/CMSIS/** -text
+third_party/STM32F4/** -text
